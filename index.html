@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Rèm Tự Động ESP32</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 30px;
+            max-width: 500px;
+            width: 100%;
+            backdrop-filter: blur(10px);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 5px;
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #888;
+            font-size: 14px;
+            margin-bottom: 25px;
+        }
+
+        .status-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid #667eea;
+        }
+
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+            font-size: 14px;
+        }
+
+        .status-item:last-child {
+            border-bottom: none;
+        }
+
+        .status-label {
+            color: #666;
+            font-weight: 500;
+        }
+
+        .status-value {
+            color: #333;
+            font-weight: 600;
+        }
+
+        .status-value.online {
+            color: #28a745;
+        }
+
+        .status-value.offline {
+            color: #dc3545;
+        }
+
+        .status-value.raining {
+            color: #007bff;
+        }
+
+        .status-value.sunny {
+            color: #ffc107;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 120px;
+        }
+
+        .btn:active {
+            transform: scale(0.95);
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5a67d8;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(220, 53, 69, 0.4);
+        }
+
+        .btn-warning {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .btn-warning:hover {
+            background: #e0a800;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 193, 7, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(108, 117, 125, 0.4);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 2px solid #667eea;
+            color: #667eea;
+        }
+
+        .btn-outline:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .btn.active {
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.3);
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+
+        .status-indicator.online {
+            background: #28a745;
+            animation: pulse 2s infinite;
+        }
+
+        .status-indicator.offline {
+            background: #dc3545;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .mode-badge {
+            display: inline-block;
+            padding: 3px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .mode-badge.auto {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .mode-badge.manual {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .connection-status {
+            text-align: center;
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-size: 13px;
+            background: #f8f9fa;
+        }
+
+        .connection-status.connected {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .connection-status.disconnected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .log-area {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+            max-height: 100px;
+            overflow-y: auto;
+            font-size: 12px;
+            font-family: 'Courier New', monospace;
+            border: 1px solid #dee2e6;
+        }
+
+        .log-entry {
+            padding: 4px 0;
+            border-bottom: 1px solid #eee;
+            color: #555;
+        }
+
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+
+        .log-time {
+            color: #999;
+            margin-right: 8px;
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 20px;
+            }
+            
+            .btn {
+                font-size: 14px;
+                padding: 10px 15px;
+                min-width: 90px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏠 Rèm Tự Động</h1>
+        <p class="subtitle">ESP32 Smart Curtain System</p>
+
+        <div class="status-card">
+            <div class="status-item">
+                <span class="status-label">🔌 Trạng thái</span>
+                <span class="status-value online">
+                    <span class="status-indicator online"></span>
+                    Kết nối
+                </span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">⚙️ Chế độ</span>
+                <span class="status-value">
+                    <span id="modeDisplay" class="mode-badge auto">TỰ ĐỘNG</span>
+                </span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">🔄 Rèm</span>
+                <span class="status-value" id="curtainStatus">ĐÓNG</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">🌡️ Nhiệt độ</span>
+                <span class="status-value" id="tempDisplay">--°C</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">💧 Độ ẩm</span>
+                <span class="status-value" id="humidityDisplay">--%</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">🌧️ Thời tiết</span>
+                <span class="status-value" id="weatherDisplay">Đang cập nhật...</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">☀️ Ánh sáng</span>
+                <span class="status-value" id="lightDisplay">Đang cập nhật...</span>
+            </div>
+        </div>
+
+        <div class="btn-group">
+            <button class="btn btn-primary" onclick="toggleMode()">
+                🔄 Chế độ
+            </button>
+            <button class="btn btn-success" onclick="controlCurtain('open')">
+                🔓 Mở Rèm
+            </button>
+            <button class="btn btn-danger" onclick="controlCurtain('close')">
+                🔒 Đóng Rèm
+            </button>
+        </div>
+
+        <div class="btn-group">
+            <button class="btn btn-warning" onclick="getStatus()">
+                📊 Cập nhật
+            </button>
+            <button class="btn btn-secondary" onclick="clearLog()">
+                🗑️ Xóa log
+            </button>
+        </div>
+
+        <div class="connection-status connected" id="connectionStatus">
+            ✅ Đã kết nối với ERA Platform
+        </div>
+
+        <div class="log-area" id="logArea">
+            <div class="log-entry">
+                <span class="log-time">[System]</span>
+                Hệ thống sẵn sàng...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ====== CẤU HÌNH ERA PLATFORM ======
+        // Thay thế bằng thông tin thực tế của bạn
+        const ERA_CONFIG = {
+            apiKey: 'YOUR_ERA_API_KEY',           // API Key từ ERA Platform
+            deviceId: 'YOUR_DEVICE_ID',           // Device ID của ESP32
+            apiUrl: 'https://api.era-platform.com/v1', // URL API của ERA
+        };
+
+        // ====== BIẾN TOÀN CỤC ======
+        let currentMode = 'auto';
+        let curtainState = 'close';
+        let isConnected = false;
+        let logEntries = [];
+
+        // ====== HÀM GỌI API ERA ======
+        async function callEraAPI(endpoint, method = 'GET', data = null) {
+            const url = `${ERA_CONFIG.apiUrl}${endpoint}`;
+            const options = {
+                method: method,
+                headers: {
+                    'X-API-Key': ERA_CONFIG.apiKey,
+                    'Content-Type': 'application/json',
+                }
+            };
+
+            if (data) {
+                options.body = JSON.stringify(data);
+            }
+
+            try {
+                const response = await fetch(url, options);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return await response.json();
+            } catch (error) {
+                console.error('ERA API Error:', error);
+                addLog('error', `Lỗi kết nối ERA: ${error.message}`);
+                return null;
+            }
+        }
+
+        // ====== ĐIỀU KHIỂN RÈM ======
+        async function controlCurtain(action) {
+            if (!isConnected) {
+                addLog('warning', 'Chưa kết nối với ERA Platform!');
+                return;
+            }
+
+            const command = action === 'open' ? 1 : 0;
+            const commandName = action === 'open' ? 'MỞ' : 'ĐÓNG';
+
+            addLog('info', `📤 Gửi lệnh ${commandName} rèm...`);
+
+            try {
+                const result = await callEraAPI(`/devices/${ERA_CONFIG.deviceId}/command`, 'POST', {
+                    command: 'set_curtain',
+                    value: command
+                });
+
+                if (result && result.success) {
+                    curtainState = action;
+                    updateUI();
+                    addLog('success', `✅ Lệnh ${commandName} rèm đã được gửi thành công!`);
+                } else {
+                    addLog('error', '❌ Gửi lệnh thất bại!');
+                }
+            } catch (error) {
+                addLog('error', `❌ Lỗi: ${error.message}`);
+            }
+        }
+
+        // ====== CHUYỂN ĐỔI CHẾ ĐỘ ======
+        async function toggleMode() {
+            if (!isConnected) {
+                addLog('warning', 'Chưa kết nối với ERA Platform!');
+                return;
+            }
+
+            const newMode = currentMode === 'auto' ? 'manual' : 'auto';
+            const modeName = newMode === 'auto' ? 'TỰ ĐỘNG' : 'THỦ CÔNG';
+
+            addLog('info', `🔄 Chuyển sang chế độ ${modeName}...`);
+
+            try {
+                const result = await callEraAPI(`/devices/${ERA_CONFIG.deviceId}/command`, 'POST', {
+                    command: 'set_mode',
+                    value: newMode
+                });
+
+                if (result && result.success) {
+                    currentMode = newMode;
+                    updateUI();
+                    addLog('success', `✅ Đã chuyển sang chế độ ${modeName}`);
+                } else {
+                    addLog('error', '❌ Chuyển chế độ thất bại!');
+                }
+            } catch (error) {
+                addLog('error', `❌ Lỗi: ${error.message}`);
+            }
+        }
+
+        // ====== LẤY TRẠNG THÁI ======
+        async function getStatus() {
+            if (!isConnected) {
+                addLog('warning', 'Chưa kết nối với ERA Platform!');
+                return;
+            }
+
+            addLog('info', '📊 Đang cập nhật trạng thái...');
+
+            try {
+                const data = await callEraAPI(`/devices/${ERA_CONFIG.deviceId}/status`);
+
+                if (data && data.status) {
+                    // Cập nhật dữ liệu từ ERA
+                    const status = data.status;
+                    currentMode = status.mode || currentMode;
+                    curtainState = status.curtain || curtainState;
+                    
+                    // Cập nhật UI
+                    updateUI();
+                    
+                    // Cập nhật thông số cảm biến
+                    document.getElementById('tempDisplay').textContent = 
+                        status.temperature ? `${status.temperature}°C` : '--°C';
+                    document.getElementById('humidityDisplay').textContent = 
+                        status.humidity ? `${status.humidity}%` : '--%';
+                    
+                    const weatherText = status.isRaining ? '🌧️ ĐANG MƯA' : '☀️ Không mưa';
+                    document.getElementById('weatherDisplay').textContent = weatherText;
+                    document.getElementById('weatherDisplay').className = 
+                        `status-value ${status.isRaining ? 'raining' : 'sunny'}`;
+                    
+                    const lightText = status.isBright ? '☀️ SÁNG' : '🌙 TỐI';
+                    document.getElementById('lightDisplay').textContent = lightText;
+                    
+                    addLog('success', '✅ Cập nhật trạng thái thành công!');
+                } else {
+                    addLog('warning', '⚠️ Không nhận được dữ liệu trạng thái!');
+                }
+            } catch (error) {
+                addLog('error', `❌ Lỗi: ${error.message}`);
+            }
+        }
+
+        // ====== CẬP NHẬT GIAO DIỆN ======
+        function updateUI() {
+            // Cập nhật chế độ
+            const modeDisplay = document.getElementById('modeDisplay');
+            if (currentMode === 'auto') {
+                modeDisplay.textContent = 'TỰ ĐỘNG';
+                modeDisplay.className = 'mode-badge auto';
+            } else {
+                modeDisplay.textContent = 'THỦ CÔNG';
+                modeDisplay.className = 'mode-badge manual';
+            }
+
+            // Cập nhật trạng thái rèm
+            const curtainDisplay = document.getElementById('curtainStatus');
+            if (curtainState === 'open') {
+                curtainDisplay.textContent = '🔓 MỞ';
+                curtainDisplay.style.color = '#28a745';
+            } else {
+                curtainDisplay.textContent = '🔒 ĐÓNG';
+                curtainDisplay.style.color = '#dc3545';
+            }
+        }
+
+        // ====== QUẢN LÝ LOG ======
+        function addLog(type, message) {
+            const time = new Date().toLocaleTimeString();
+            const logArea = document.getElementById('logArea');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            
+            let icon = 'ℹ️';
+            if (type === 'success') icon = '✅';
+            else if (type === 'error') icon = '❌';
+            else if (type === 'warning') icon = '⚠️';
+            
+            entry.innerHTML = `<span class="log-time">[${time}]</span> ${icon} ${message}`;
+            logArea.appendChild(entry);
+            logArea.scrollTop = logArea.scrollHeight;
+            
+            // Giới hạn số lượng log
+            while (logArea.children.length > 50) {
+                logArea.removeChild(logArea.firstChild);
+            }
+        }
+
+        function clearLog() {
+            const logArea = document.getElementById('logArea');
+            logArea.innerHTML = '';
+            addLog('info', '🗑️ Log đã được xóa');
+        }
+
+        // ====== KẾT NỐI VỚI ERA PLATFORM ======
+        async function connectToERA() {
+            addLog('info', '🔄 Đang kết nối với ERA Platform...');
+            
+            try {
+                // Kiểm tra kết nối
+                const result = await callEraAPI(`/devices/${ERA_CONFIG.deviceId}/ping`);
+                
+                if (result && result.status === 'online') {
+                    isConnected = true;
+                    document.getElementById('connectionStatus').className = 'connection-status connected';
+                    document.getElementById('connectionStatus').textContent = '✅ Đã kết nối với ERA Platform';
+                    addLog('success', '✅ Kết nối ERA Platform thành công!');
+                    
+                    // Lấy trạng thái ban đầu
+                    await getStatus();
+                } else {
+                    isConnected = false;
+                    document.getElementById('connectionStatus').className = 'connection-status disconnected';
+                    document.getElementById('connectionStatus').textContent = '❌ Không thể kết nối với ERA Platform';
+                    addLog('error', '❌ Không thể kết nối với ERA Platform!');
+                }
+            } catch (error) {
+                isConnected = false;
+                document.getElementById('connectionStatus').className = 'connection-status disconnected';
+                document.getElementById('connectionStatus').textContent = '❌ Lỗi kết nối ERA Platform';
+                addLog('error', `❌ Lỗi kết nối: ${error.message}`);
+            }
+        }
+
+        // ====== KHỞI TẠO ======
+        document.addEventListener('DOMContentLoaded', function() {
+            addLog('info', '🚀 Giao diện đã khởi động');
+            addLog('info', `📱 Device ID: ${ERA_CONFIG.deviceId}`);
+            
+            // Kết nối với ERA Platform
+            connectToERA();
+            
+            // Tự động cập nhật trạng thái mỗi 10 giây
+            setInterval(() => {
+                if (isConnected) {
+                    getStatus();
+                }
+            }, 10000);
+        });
+
+        // ====== HÀM KIỂM TRA KẾT NỐI (dùng cho debug) ======
+        console.log('Hệ thống rèm thông minh - ERA Platform Interface');
+        console.log('Device ID:', ERA_CONFIG.deviceId);
+        console.log('API URL:', ERA_CONFIG.apiUrl);
+    </script>
+</body>
+</html>
